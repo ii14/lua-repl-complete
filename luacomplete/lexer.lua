@@ -74,7 +74,7 @@ function lexer.tokenize(input)
     local sidx, sline, scol = idx, line, col
 
     -- COMMENTS
-    if rest:match('^%-%-') then
+    if rest:find('^%-%-') then
       local value = slice(2)
       local long = rest:match('^%[=?=?=?=?%[')
       if long then
@@ -99,7 +99,7 @@ function lexer.tokenize(input)
             idx, line, col = idx + pos, line + 1, 0
           else
             value = value..slice(pos - 1)
-            if rest:match(re) then
+            if rest:find(re) then
               return {
                 type = token_type.COMMENT, value = value..slice(#long),
                 idx = sidx, line = sline, col = scol,
@@ -157,7 +157,7 @@ function lexer.tokenize(input)
             idx, line, col = idx + pos, line + 1, 0
           else
             value = value..slice(pos - 1)
-            if rest:match(re) then
+            if rest:find(re) then
               return {
                 type = token_type.STRING, value = value..slice(#long),
                 idx = sidx, line = sline, col = scol,
