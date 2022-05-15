@@ -35,6 +35,7 @@ local lexer = {
 ---@return number idx                 0-indexed end position
 ---@return number line                0-indexed end line number
 ---@return number col                 0-indexed end column number
+---@return luaCompleteToken? err      First unknown token
 function lexer.tokenize(input)
   assert(type(input) == 'string', 'expected string')
 
@@ -263,10 +264,15 @@ function lexer.tokenize(input)
 
   local tokens = {}
   local last
+  local err
   for token in iter do
     if token.type ~= token_type.UNKNOWN then
       tokens[#tokens+1] = token
       last = nil
+    elseif err == nil then
+      err = token
+      tokens[#tokens+1] = token
+      last = token
     elseif last == nil then
       tokens[#tokens+1] = token
       last = token
@@ -274,7 +280,7 @@ function lexer.tokenize(input)
       last.value = last.value..token.value
     end
   end
-  return tokens, idx, line, col
+  return tokens, idx, line, col, err
 end
 
 return lexer
