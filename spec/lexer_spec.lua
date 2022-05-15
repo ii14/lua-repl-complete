@@ -267,6 +267,14 @@ describe('luacomplete.lexer', function()
         S{ idx=0, line=0, col=0, value='[[\nfoo\n]]', long=true },
         S{ idx=9, line=2, col=2, value='[[\nbar\n]]', long=true },
       })
+      eq(L('[=[\nfoo\n]=]\n[=[\nbar\n]=]'), {
+        S{ idx=0,  line=0, value='[=[\nfoo\n]=]', long=true },
+        S{ idx=12, line=3, value='[=[\nbar\n]=]', long=true },
+      })
+      eq(L('[=[\nfoo\n]=][=[\nbar\n]=]'), {
+        S{ idx=0,  line=0, col=0, value='[=[\nfoo\n]=]', long=true },
+        S{ idx=11, line=2, col=3, value='[=[\nbar\n]=]', long=true },
+      })
       eq(L('[[\nfoo'), {
         S{ value='[[\nfoo', long=true, incomplete=true },
       })
@@ -356,8 +364,16 @@ describe('luacomplete.lexer', function()
         C{ idx=12, line=3, value='--[[\nbar\n]]', long=true },
       })
       eq(L('--[[\nfoo\n]]--[[\nbar\n]]'), {
-        C{ idx=0, line=0, col=0, value='--[[\nfoo\n]]', long=true },
+        C{ idx=0,  line=0, col=0, value='--[[\nfoo\n]]', long=true },
         C{ idx=11, line=2, col=2, value='--[[\nbar\n]]', long=true },
+      })
+      eq(L('--[=[\nfoo\n]=]\n--[=[\nbar\n]=]'), {
+        C{ idx=0,  line=0, value='--[=[\nfoo\n]=]', long=true },
+        C{ idx=14, line=3, value='--[=[\nbar\n]=]', long=true },
+      })
+      eq(L('--[=[\nfoo\n]=]--[=[\nbar\n]=]'), {
+        C{ idx=0,  line=0, col=0, value='--[=[\nfoo\n]=]', long=true },
+        C{ idx=13, line=2, col=3, value='--[=[\nbar\n]=]', long=true },
       })
       eq(L('--[[\nfoo'), {
         C{ value='--[[\nfoo', long=true, incomplete=true },
