@@ -19,13 +19,12 @@ local function mk_token_gen(type)
   end
 end
 
-local token_type = lexer.token_type
-local C = mk_token_gen(token_type.COMMENT)
-local I = mk_token_gen(token_type.IDENT)
-local N = mk_token_gen(token_type.NUMBER)
-local O = mk_token_gen(token_type.OP)
-local S = mk_token_gen(token_type.STRING)
-local U = mk_token_gen(token_type.UNKNOWN)
+local C = mk_token_gen(lexer.TOKEN_TYPE.COMMENT)
+local I = mk_token_gen(lexer.TOKEN_TYPE.IDENT)
+local N = mk_token_gen(lexer.TOKEN_TYPE.NUMBER)
+local O = mk_token_gen(lexer.TOKEN_TYPE.OP)
+local S = mk_token_gen(lexer.TOKEN_TYPE.STRING)
+local U = mk_token_gen(lexer.TOKEN_TYPE.UNKNOWN)
 
 local eq = assert.are.same
 
@@ -480,5 +479,48 @@ describe('luacomplete.lexer', function()
       U{ idx=1, col=1, value='||' },
       N{ idx=3, col=3, value='2' },
     })
+  end)
+
+  it('returns last position', function()
+    -- { idx, line, col }
+    local function pos(s)
+      return { select(2, L(s)) }
+    end
+
+    eq(pos('foo'), { 3, 0, 3 })
+    eq(pos('foo '), { 4, 0, 4 })
+    eq(pos('foo\n'), { 4, 1, 0 })
+
+    eq(pos('"foo'), { 4, 0, 4 })
+    eq(pos('"foo '), { 5, 0, 5 })
+    eq(pos('"foo\n'), { 5, 1, 0 })
+
+    eq(pos('--foo'), { 5, 0, 5 })
+    eq(pos('--foo '), { 6, 0, 6 })
+    eq(pos('--foo\n'), { 6, 1, 0 })
+
+    eq(pos('[[foo]]'), { 7, 0, 7 })
+    eq(pos('[[foo]] '), { 8, 0, 8 })
+    eq(pos('[[foo]]\n'), { 8, 1, 0 })
+
+    eq(pos('[[foo'), { 5, 0, 5 })
+    eq(pos('[[foo '), { 6, 0, 6 })
+    eq(pos('[[foo\n'), { 6, 1, 0 })
+
+    eq(pos('[[\nfoo\n]]'), { 9, 2, 2 })
+    eq(pos('[[\nfoo\n]] '), { 10, 2, 3 })
+    eq(pos('[[\nfoo\n]]\n'), { 10, 3, 0 })
+
+    eq(pos('--[[foo]]'), { 9, 0, 9 })
+    eq(pos('--[[foo]] '), { 10, 0, 10 })
+    eq(pos('--[[foo]]\n'), { 10, 1, 0 })
+
+    eq(pos('--[[foo'), { 7, 0, 7 })
+    eq(pos('--[[foo '), { 8, 0, 8 })
+    eq(pos('--[[foo\n'), { 8, 1, 0 })
+
+    eq(pos('--[[\nfoo\n]]'), { 11, 2, 2 })
+    eq(pos('--[[\nfoo\n]] '), { 12, 2, 3 })
+    eq(pos('--[[\nfoo\n]]\n'), { 12, 3, 0 })
   end)
 end)
