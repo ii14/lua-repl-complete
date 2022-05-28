@@ -1,6 +1,6 @@
 local lexer = require('luacomplete.lexer')
 local tokenize = lexer.tokenize
-local parse = lexer.parse2
+local parse = lexer.parse
 local T = lexer.TOKEN_TYPE
 
 local eq = assert.are.same

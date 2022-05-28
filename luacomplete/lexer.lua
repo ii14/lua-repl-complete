@@ -617,7 +617,7 @@ function lexer.trie()
 end
 
 ---@param ts luaCompleteToken[]
-function lexer.parse2(ts)
+function lexer.parse(ts)
   lexer.resolve_tokens(ts)
   local res = {}
   local trie = lexer.trie()
@@ -637,98 +637,6 @@ function lexer.parse2(ts)
   end
 
   return res
-end
-
-
---- Parse expression
----@param ts luaCompleteToken[]
-function lexer.parse(ts)
-  local T = TOKEN_TYPE
-
-  lexer.resolve_tokens(ts)
-
-  local r = {}  --- Result
-  local t = nil --- Current token
-  local n = nil --- Next token
-  local i = 0   --- Index
-
-  local function iter()
-    i = i + 1
-    t = ts[i]
-    n = ts[i+1]
-    return t
-  end
-
-  local function append(expr)
-    r[#r+1] = expr
-    return expr
-  end
-
-  -- local function parse_prop()
-  --   if n.type == T.DOT then
-  --     local expr = append { type = 'prop', iter() }
-
-  --     if not n then return false end
-  --     if n.type ~= T.IDENT then return true end
-  --     expr[#expr+1] = iter()
-  --   end
-  -- end
-
-  while iter() do
-    if t.type == T.IDENT then
-      append { type = 'root', t }
-
-      while true do
-        if not n then
-          return r
-        elseif n.type == T.DOT then
-          local expr = append { type = 'prop', iter() }
-
-          if not n then return r end
-          if n.type ~= T.IDENT then break end
-          expr[#expr+1] = iter()
-        elseif n.type == T.LSQUARE then
-          local expr = append { type = 'index', iter() }
-
-          if not n then return r end
-          if n.type ~= T.NUMBER and n.type ~= T.STRING then break end
-          expr[#expr+1] = iter()
-
-          if not n then return r end
-          if n.type ~= T.RSQUARE then break end
-          expr[#expr+1] = iter()
-        elseif n.type == T.COLON then
-          local expr = append { type = 'method', iter() }
-
-          if not n then return r end
-          if n.type ~= T.IDENT then break end
-          expr[#expr+1] = iter()
-
-          if not n then return r end
-          break
-        elseif n.type == T.LPAREN then
-          local expr = append { type = 'call2', iter() }
-
-          if not n then return r end
-          if n.type ~= T.STRING then break end
-          expr[#expr+1] = iter()
-
-          if not n then return r end
-          if n.type ~= T.RPAREN then break end
-          expr[#expr+1] = iter()
-        elseif n.type == T.STRING then
-          append { type = 'call1', iter() }
-        else
-          break
-        end
-      end
-    else
-      break
-    end
-
-    r = {}
-  end
-  return r
 end
 
 return lexer
