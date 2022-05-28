@@ -469,60 +469,6 @@ function lexer.resolve_tokens(tokens)
   return tokens
 end
 
---- Get token length
----@param token luaCompleteToken
----@return number length
-function lexer.token_len(token)
-  return TOKEN_TYPE_LEN[token.type] or #token.value
-end
-
----@param t number
----@return boolean
-function lexer.is_operator(t)
-  return t == TOKEN_TYPE.OP or (t > TOKEN_TYPE._OP_BEGIN and t < TOKEN_TYPE._OP_END)
-end
-
----@param t number
----@return boolean
-function lexer.is_keyword(t)
-  return t > TOKEN_TYPE._KW_BEGIN and t < TOKEN_TYPE._KW_END
-end
-
----@param ts luaCompleteToken[]
----@param i number
----@return number, luaCompleteToken[]
-function lexer.parse_funcname(ts, i)
-  if ts[i] and ts[i].type == TOKEN_TYPE.IDENT then
-    local r = { ts[i] }
-    while true do
-      i = i + 1
-      if not ts[i] then
-        return i - 1, r
-      elseif ts[i].type == TOKEN_TYPE.DOT then
-        r[#t+1] = ts[i]
-        i = i + 1
-        if ts[i].type == TOKEN_TYPE.IDENT then
-          r[#t+1] = ts[i]
-        else
-          return i - 1, r
-        end
-      elseif ts[i].type == TOKEN_TYPE.COLON then
-        r[#t+1] = ts[i]
-        i = i + 1
-        if ts[i].type == TOKEN_TYPE.IDENT then
-          r[#t+1] = ts[i]
-          return i, r
-        else
-          return i - 1, r
-        end
-      else
-        return i, r
-      end
-    end
-    return i, r
-  end
-end
-
 -- local function make_lookup(t)
 --   local res = {}
 --   for _, v in ipairs(t) do
@@ -638,5 +584,29 @@ function lexer.parse(ts)
 
   return res
 end
+
+
+--- Utilities
+lexer.util = {}
+
+--- Get token length
+---@param token luaCompleteToken
+---@return number length
+function lexer.util.token_len(token)
+  return TOKEN_TYPE_LEN[token.type] or #token.value
+end
+
+---@param t number
+---@return boolean
+function lexer.util.is_operator(t)
+  return t > TOKEN_TYPE._OP_BEGIN and t < TOKEN_TYPE._OP_END
+end
+
+---@param t number
+---@return boolean
+function lexer.util.is_keyword(t)
+  return t > TOKEN_TYPE._KW_BEGIN and t < TOKEN_TYPE._KW_END
+end
+
 
 return lexer
