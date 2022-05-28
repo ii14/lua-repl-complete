@@ -586,25 +586,24 @@ function lexer.parse(ts)
 end
 
 
---- Utilities
-lexer.util = {}
-
---- Get token length
+--- Utility function: Get token length.
 ---@param token luaCompleteToken
 ---@return number length
-function lexer.util.token_len(token)
+function lexer.token_len(token)
   return TOKEN_TYPE_LEN[token.type] or #token.value
 end
 
+--- Utility function: Check is token an operator. Expects resolved tokens.
 ---@param t number
 ---@return boolean
-function lexer.util.is_operator(t)
+function lexer.is_operator(t)
   return t > TOKEN_TYPE._OP_BEGIN and t < TOKEN_TYPE._OP_END
 end
 
+--- Utility function: Check is token a keyword. Expects resolved tokens.
 ---@param t number
 ---@return boolean
-function lexer.util.is_keyword(t)
+function lexer.is_keyword(t)
   return t > TOKEN_TYPE._KW_BEGIN and t < TOKEN_TYPE._KW_END
 end
 
