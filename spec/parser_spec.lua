@@ -93,5 +93,66 @@ describe('luacomplete.parse', function()
       { type=T.RPAREN },
       { type=T.END },
     }, p('function(a, b) end'))
+
+    eq({
+      { type=T.LCURLY },
+      { type=T.LSQUARE },
+      { type=T.LPAREN },
+      { type=T.FUNCTION },
+      { type=T.LPAREN },
+      { type=T.RPAREN },
+      { type=T.END },
+      { type=T.RPAREN },
+      { type=T.RSQUARE },
+      { type=T.ASSIGN },
+      { type=T.LPAREN },
+      { type=T.FUNCTION },
+      { type=T.LPAREN },
+      { type=T.RPAREN },
+      { type=T.END },
+      { type=T.RPAREN },
+      { type=T.RCURLY },
+    }, p('{[(function()end)]=(function()end)}'))
+
+    eq({
+      { type=T.IDENT, value='foo' },
+    }, p('foo'))
+
+    eq({
+      { type=T.IDENT, value='foo' },
+      { type=T.DOT },
+    }, p('foo.'))
+
+    eq({
+      { type=T.IDENT, value='foo' },
+      { type=T.DOT },
+      { type=T.IDENT, value='bar' },
+    }, p('foo.bar'))
+
+    eq({
+      { type=T.IDENT, value='foo' },
+      { type=T.DOT },
+      { type=T.IDENT, value='bar' },
+      { type=T.DOT },
+      { type=T.IDENT, value='baz' },
+    }, p('foo.bar.baz'))
+
+    eq({
+      { type=T.IDENT, value='foo' },
+      { type=T.LSQUARE },
+    }, p('foo['))
+
+    eq({
+      { type=T.IDENT, value='foo' },
+      { type=T.LSQUARE },
+      { type=T.NUMBER, value='1' },
+    }, p('foo[1'))
+
+    eq({
+      { type=T.IDENT, value='foo' },
+      { type=T.LSQUARE },
+      { type=T.NUMBER, value='1' },
+      { type=T.RSQUARE },
+    }, p('foo[1]'))
   end)
 end)

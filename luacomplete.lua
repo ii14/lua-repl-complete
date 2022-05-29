@@ -608,7 +608,20 @@ local function make_trie()
       ELSE = 'expected `(`',
     },
 
-    -- TODO: prefixexp
+    [T.IDENT] = REF 'var' {
+      [T.DOT] = {
+        [T.IDENT] = REF 'var',
+        ELSE = 'expected identifier',
+      },
+      [T.LSQUARE] = {
+        PUSH = REF 'exp',
+        THEN = {
+          [T.RSQUARE] = REF 'var',
+          ELSE = 'expected `]`',
+        },
+      },
+      ELSE = REF 'binop_exp',
+    },
 
     [T.LPAREN] = {
       PUSH = REF 'exp',
