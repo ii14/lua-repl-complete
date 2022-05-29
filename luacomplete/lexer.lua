@@ -469,18 +469,9 @@ function lexer.resolve_tokens(tokens)
   return tokens
 end
 
--- local function make_lookup(t)
---   local res = {}
---   for _, v in ipairs(t) do
---     res[v] = true
---   end
---   return res
--- end
+local ELSE = -1
 
-function lexer.trie()
-  local T = TOKEN_TYPE
-
-  local trie = {}
+local function new_refs()
   local refs = {}
 
   local ref_mt = {
@@ -501,31 +492,212 @@ function lexer.trie()
     return r
   end
 
+  return ref, refs
+end
+
+
+
+function lexer.make_trie2()
+  local T = TOKEN_TYPE
+  local ref = new_refs()
+
+  ref 'exp' {
+    [T.NIL] = ref 'binop_exp' {
+      [T.ADD] = ref 'exp',
+      [T.SUB] = ref 'exp',
+      [T.MUL] = ref 'exp',
+      [T.DIV] = ref 'exp',
+      [T.POW] = ref 'exp',
+      [T.MOD] = ref 'exp',
+      [T.CONCAT] = ref 'exp',
+      [T.LT] = ref 'exp',
+      [T.LE] = ref 'exp',
+      [T.GT] = ref 'exp',
+      [T.GE] = ref 'exp',
+      [T.EQ] = ref 'exp',
+      [T.NE] = ref 'exp',
+      [T.AND] = ref 'exp',
+      [T.OR] = ref 'exp',
+      [ELSE] = true,
+    },
+
+    [T.FALSE] = ref 'binop_exp',
+    [T.TRUE] = ref 'binop_exp',
+    [T.NUMBER] = ref 'binop_exp',
+    [T.STRING] = ref 'binop_exp',
+    [T.VARARG] = ref 'binop_exp',
+
+    -- TODO: function
+    -- TODO: prefixexp
+    -- TODO: tableconstructor
+
+    [T.SUB] = ref 'exp',
+    [T.NOT] = ref 'exp',
+    [T.LEN] = ref 'exp',
+
+    [T.LPAREN] = {
+      PUSH = ref 'exp',
+      THEN = {
+        [T.RPAREN] = ref 'binop_exp',
+        [ELSE] = 'expected `)`',
+      },
+    },
+
+    [ELSE] = 'expected expression',
+  }
+
+  return ref 'exp'
+end
+
+--- Parse tokens
+---@param ts luaCompleteToken[]
+function lexer.parse2(ts)
+  lexer.resolve_tokens(ts)
+  local res = {}
+  local trie = lexer.make_trie2()
+  local stack = { trie }
+
+  for _, t in ipairs(ts) do
+    local pos = stack[#stack]
+    local npos = assert(pos[t.type] or pos[ELSE], 'not handled')
+
+    while npos == true do
+      -- `true` => expression parsed, pop from the stack
+      if #stack <= 1 then
+        -- TODO: unexpected token error
+        return ('%d:%d: tried to pop from empty stack'):format(t.line + 1, t.col + 1)
+      end
+      table.remove(stack)
+      pos = stack[#stack]
+      npos = assert(pos[t.type] or pos[ELSE], 'not handled')
+    end
+
+    if type(npos) == 'string' then
+      -- string => parse error
+      return ('%d:%d: %s'):format(t.line + 1, t.col + 1, npos)
+    elseif npos.PUSH then
+      -- PUSH => push onto the stack
+      stack[#stack] = assert(npos.THEN)
+      stack[#stack+1] = npos.PUSH
+    else
+      stack[#stack] = npos
+    end
+
+    table.insert(res, t)
+  end
+
+  return res
+end
+
+
+
+function lexer.make_trie()
+  local T = TOKEN_TYPE
+  local trie = {}
+  local ref = new_refs()
+
+  ref 'var' {
+    [T.IDENT] = ref 'after_var2' {
+      [T.DOT] = {
+        [T.IDENT] = ref 'after_var2',
+        [ELSE] = 'expected identifier',
+      },
+      [T.LSQUARE] = {
+        [ref 'exp'] = {
+          [T.RSQUARE] = ref 'after_var2',
+          [ELSE] = 'expected `]`',
+        },
+      },
+      [ELSE] = true,
+    },
+  }
+
+  ref 'binop_exp' {
+    [T.ADD] = ref 'exp',
+    [T.SUB] = ref 'exp',
+    [T.MUL] = ref 'exp',
+    [T.DIV] = ref 'exp',
+    [T.POW] = ref 'exp',
+    [T.MOD] = ref 'exp',
+    [T.CONCAT] = ref 'exp',
+    [T.LT] = ref 'exp',
+    [T.LE] = ref 'exp',
+    [T.GT] = ref 'exp',
+    [T.GE] = ref 'exp',
+    [T.EQ] = ref 'exp',
+    [T.NE] = ref 'exp',
+    [T.AND] = ref 'exp',
+    [T.OR] = ref 'exp',
+    [ELSE] = true,
+  }
+
+  ref 'exp' {
+    [T.NIL] = ref 'binop_exp',
+    [T.FALSE] = ref 'binop_exp',
+    [T.TRUE] = ref 'binop_exp',
+    [T.NUMBER] = ref 'binop_exp',
+    [T.STRING] = ref 'binop_exp',
+    [T.VARARG] = ref 'binop_exp',
+
+    -- TODO: function
+    -- TODO: prefixexp
+    -- TODO: tableconstructor
+
+    [T.SUB] = ref 'exp',
+    [T.NOT] = ref 'exp',
+    [T.LEN] = ref 'exp',
+
+    [T.LPAREN] = {
+      [ref 'exp'] = {
+        [T.RPAREN] = ref 'binop_exp',
+        [ELSE] = 'expected `)`',
+      },
+    },
+
+    [ELSE] = 'expected expression',
+  }
+
+  ref 'inlinefunc' {
+    [T.FUNCTION] = {
+      [T.LPAREN] = ref 'inlinefunc_args' {
+        [T.RPAREN] = true,
+        [T.IDENT] = {
+          [T.COMMA] = ref 'inlinefunc_args',
+          [T.RPAREN] = true,
+        },
+        [T.VARARG] = {
+          [T.RPAREN] = true,
+        },
+      },
+    },
+  }
+
   trie[T.IDENT] = {
-    name = 'root',
-    lookup = ref 'after_ident' {
+    name = 'var',
+    lookup = ref 'after_var' {
 
       [T.DOT] = {
         name = 'prop',
         lookup = {
-          [T.IDENT] = ref 'after_ident',
+          [T.IDENT] = ref 'after_var',
         },
       },
 
       [T.LSQUARE] = {
         name = 'index',
         lookup = {
+          -- TODO: generic exp
           [T.NUMBER] = {
-            [T.RSQUARE] = ref 'after_ident',
+            [T.RSQUARE] = ref 'after_var',
           },
           [T.STRING] = {
-            [T.RSQUARE] = ref 'after_ident',
+            [T.RSQUARE] = ref 'after_var',
           },
           [T.TRUE] = {
-            [T.RSQUARE] = ref 'after_ident',
+            [T.RSQUARE] = ref 'after_var',
           },
           [T.FALSE] = {
-            [T.RSQUARE] = ref 'after_ident',
+            [T.RSQUARE] = ref 'after_var',
           },
         },
       },
@@ -535,25 +707,34 @@ function lexer.trie()
         lookup = {
           [T.IDENT] = {
             [T.LPAREN] = {
-              [T.RPAREN] = ref 'after_ident',
+              [T.RPAREN] = ref 'after_var',
             },
           },
         },
       },
 
       [T.LPAREN] = {
-        name = 'call2',
+        name = 'call',
         lookup = {
-          [T.RPAREN] = ref 'after_ident',
+          [T.RPAREN] = ref 'after_var',
+          -- TODO: generic exp list
           [T.STRING] = {
-            [T.RPAREN] = ref 'after_ident',
+            [T.RPAREN] = ref 'after_var',
           },
         },
       },
 
       [T.STRING] = {
-        name = 'call1',
-        lookup = ref 'after_ident',
+        name = 'call',
+        lookup = ref 'after_var',
+      },
+
+      [T.LCURLY] = {
+        name = 'call',
+        lookup = {
+          [T.RCURLY] = ref 'after_var',
+          -- TODO: table ctor
+        },
       },
 
     },
@@ -562,15 +743,16 @@ function lexer.trie()
   return trie
 end
 
+--- Parse tokens
 ---@param ts luaCompleteToken[]
 function lexer.parse(ts)
   lexer.resolve_tokens(ts)
   local res = {}
-  local trie = lexer.trie()
+  local trie = lexer.make_trie()
   local pos = trie
 
   for _, t in ipairs(ts) do
-    local npos = assert(pos[t.type])
+    local npos = pos[t.type]
     if npos then
       if npos.name then
         table.insert(res, { type=npos.name, t })
