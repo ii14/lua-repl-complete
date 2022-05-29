@@ -44,6 +44,29 @@ describe('luacomplete.parse2', function()
     }, p('((nil) > (nil))'))
 
     eq('1:6: tried to pop from empty stack', p('(nil))'))
+
+    eq({
+      { type=T.LCURLY },
+      { type=T.RCURLY },
+    }, p('{}'))
+
+    eq({
+      { type=T.LCURLY },
+      { type=T.LSQUARE },
+      { type=T.TRUE },
+      { type=T.RSQUARE },
+      { type=T.ASSIGN },
+      { type=T.TRUE },
+      { type=T.RCURLY },
+    }, p('{[true]=true}'))
+
+    eq({
+      { type=T.LCURLY },
+      { type=T.IDENT, value='key' },
+      { type=T.ASSIGN },
+      { type=T.STRING, value='"value"' },
+      { type=T.RCURLY },
+    }, p('{key="value"}'))
   end)
 end)
 

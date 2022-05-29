@@ -529,7 +529,39 @@ function M.make_trie2()
 
     -- TODO: function
     -- TODO: prefixexp
-    -- TODO: tableconstructor
+
+    [T.LCURLY] = ref 'table_ctor' {
+      [T.RCURLY] = ref 'binop_exp',
+      -- TODO: there could be also an exp here, if not followed by `=`.
+      [T.IDENT] = {
+        [T.ASSIGN] = {
+          PUSH = ref 'exp',
+          THEN = ref 'table_ctor_next' {
+            [T.COMMA] = ref 'table_ctor',
+            [T.SEMICOLON] = ref 'table_ctor',
+            [T.RCURLY] = ref 'binop_exp',
+            [ELSE] = 'expected `,`, `;` or `}`',
+          },
+        },
+        [T.COMMA] = ref 'table_ctor',
+        [T.SEMICOLON] = ref 'table_ctor',
+        [T.RCURLY] = ref 'binop_exp',
+        [ELSE] = 'expected `=`, `,`, `;`, `}`',
+      },
+      [T.LSQUARE] = {
+        PUSH = ref 'exp',
+        THEN = {
+          [T.RSQUARE] = {
+            [T.ASSIGN] = {
+              PUSH = ref 'exp',
+              THEN = ref 'table_ctor_next',
+            },
+            [ELSE] = 'expected `=`',
+          },
+          [ELSE] = 'expected `]`',
+        },
+      },
+    },
 
     [T.SUB] = ref 'exp',
     [T.NOT] = ref 'exp',
