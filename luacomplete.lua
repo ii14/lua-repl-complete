@@ -340,6 +340,7 @@ function M.tokenize(input)
 
     -- OPERATORS
     do
+      -- TODO: tokenize `::`
       local m = rest:match('^[=~<>]=')
         or rest:match('^%.%.?%.?')
         or rest:match('^[:;<>/%*%(%)%-=,{}#%^%+%%%[%]]')
@@ -535,6 +536,7 @@ function M.make_trie2()
     -- tableconstructor
     [T.LCURLY] = ref 'table_ctor' {
       [T.RCURLY] = ref 'binop_exp',
+
       -- TODO: there could be also an exp here, if not followed by `=`.
       [T.IDENT] = {
         [T.ASSIGN] = {
@@ -551,6 +553,7 @@ function M.make_trie2()
         [T.RCURLY] = ref 'binop_exp',
         [ELSE] = 'expected `=`, `,`, `;`, `}`',
       },
+
       [T.LSQUARE] = {
         PUSH = ref 'exp',
         THEN = {
@@ -564,12 +567,14 @@ function M.make_trie2()
           [ELSE] = 'expected `]`',
         },
       },
+
       [ELSE] = 'expected field or expression',
     },
 
     [T.FUNCTION] = {
       [T.LPAREN] = ref 'func_parlist' {
         [T.RPAREN] = ref 'func_body' {
+          -- TODO: parse statements
           [T.END] = ref 'binop_exp',
           [ELSE] = 'TODO: expected `end`',
         },
