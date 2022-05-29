@@ -487,6 +487,7 @@ local ref_mt = {
   end,
 }
 
+--- Create a new reference registry
 local function new_refs()
   local refs = {}
   return function(name)
@@ -500,15 +501,15 @@ local function new_refs()
 end
 
 local TRIE
-local ELSE = -1
 
+--- Create a trie for luajit syntax
 local function make_trie()
   if TRIE then
     return TRIE
   end
 
   local T = TOKEN_TYPE
-  local REF = new_refs()
+  local REF, refs = new_refs()
 
   REF 'exp' {
     [T.NIL] = REF 'binop_exp' {
@@ -527,7 +528,7 @@ local function make_trie()
       [T.NE] = REF 'exp',
       [T.AND] = REF 'exp',
       [T.OR] = REF 'exp',
-      [ELSE] = true,
+      ELSE = true,
     },
 
     [T.FALSE] = REF 'binop_exp',
@@ -545,7 +546,7 @@ local function make_trie()
     [T.LCURLY] = REF 'table_ctor' {
       [T.RCURLY] = REF 'binop_exp',
 
-      -- TODO: there could be also an exp here, if not followed by `=`.
+      -- TODO: there could be also just exp here, if not followed by `=`.
       [T.IDENT] = {
         [T.ASSIGN] = {
           PUSH = REF 'exp',
@@ -553,13 +554,13 @@ local function make_trie()
             [T.COMMA] = REF 'table_ctor',
             [T.SEMICOLON] = REF 'table_ctor',
             [T.RCURLY] = REF 'binop_exp',
-            [ELSE] = 'expected `,`, `;` or `}`',
+            ELSE = 'expected `,`, `;` or `}`',
           },
         },
         [T.COMMA] = REF 'table_ctor',
         [T.SEMICOLON] = REF 'table_ctor',
         [T.RCURLY] = REF 'binop_exp',
-        [ELSE] = 'expected `=`, `,`, `;`, `}`',
+        ELSE = 'expected `=`, `,`, `;`, `}`',
       },
 
       [T.LSQUARE] = {
@@ -570,34 +571,41 @@ local function make_trie()
               PUSH = REF 'exp',
               THEN = REF 'table_ctor_next',
             },
-            [ELSE] = 'expected `=`',
+            ELSE = 'expected `=`',
           },
-          [ELSE] = 'expected `]`',
+          ELSE = 'expected `]`',
         },
       },
 
-      [ELSE] = 'expected field or expression',
+      ELSE = 'expected field or expression',
     },
 
     [T.FUNCTION] = {
-      [T.LPAREN] = REF 'func_parlist' {
+      [T.LPAREN] = {
         [T.RPAREN] = REF 'func_body' {
           -- TODO: parse statements
           [T.END] = REF 'binop_exp',
-          [ELSE] = 'TODO: expected `end`',
+          ELSE = 'TODO: expected `end`',
         },
-        [T.IDENT] = {
-          [T.COMMA] = REF 'func_parlist',
+        [T.IDENT] = REF 'func_parlist' {
+          [T.COMMA] = {
+						[T.IDENT] = REF 'func_parlist',
+						ELSE = 'expected identifier',
+					},
+					[T.VARARG] = {
+						[T.RPAREN] = REF 'func_body',
+						ELSE = 'expected `)`',
+					},
           [T.RPAREN] = REF 'func_body',
-          [ELSE] = 'expected `)` or `,`',
+          ELSE = 'expected `)` or `,`',
         },
         [T.VARARG] = {
           [T.RPAREN] = REF 'func_body',
-          [ELSE] = 'expected `)`',
+          ELSE = 'expected `)`',
         },
-        [ELSE] = 'expected identifier or `)`',
+        ELSE = 'expected identifier or `)`',
       },
-      [ELSE] = 'expected `(`',
+      ELSE = 'expected `(`',
     },
 
     -- TODO: prefixexp
@@ -606,14 +614,18 @@ local function make_trie()
       PUSH = REF 'exp',
       THEN = {
         [T.RPAREN] = REF 'binop_exp',
-        [ELSE] = 'expected `)`',
+        ELSE = 'expected `)`',
       },
     },
 
-    [ELSE] = 'expected expression',
+    ELSE = 'expected expression',
   }
 
   TRIE = REF 'exp'
+  -- remove metatables
+  for _, v in pairs(refs) do
+    setmetatable(v, nil)
+  end
   return TRIE
 end
 
@@ -627,7 +639,7 @@ function M.parse(ts)
 
   for _, t in ipairs(ts) do
     local pos = stack[#stack]
-    local npos = assert(pos[t.type] or pos[ELSE], 'not handled')
+    local npos = assert(pos[t.type] or pos.ELSE, 'not handled')
 
     while npos == true do
       -- `true` => expression parsed, pop from the stack
@@ -637,7 +649,7 @@ function M.parse(ts)
       end
       tremove(stack)
       pos = stack[#stack]
-      npos = assert(pos[t.type] or pos[ELSE], 'not handled')
+      npos = assert(pos[t.type] or pos.ELSE, 'not handled')
     end
 
     if type(npos) == 'string' then
