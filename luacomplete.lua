@@ -487,17 +487,20 @@ local ref_mt = {
   end,
 }
 
---- Create a new reference registry
-local function new_refs()
-  local refs = {}
-  return function(name)
-    local r = refs[name]
+local refs_mt = {
+  __index = function(o, k)
+    local r = rawget(o, k)
     if not r then
       r = setmetatable({}, ref_mt)
-      refs[name] = r
+      rawset(o, k, r)
     end
     return r
-  end, refs
+  end,
+}
+
+--- Create a new reference registry
+local function new_refs()
+  return setmetatable({}, refs_mt)
 end
 
 local TRIE
@@ -509,67 +512,67 @@ local function make_trie()
   end
 
   local T = TOKEN_TYPE
-  local REF, refs = new_refs()
+  local REF = new_refs()
 
-  REF 'exp' {
-    [T.NIL] = REF 'binop_exp' {
-      [T.ADD] = REF 'exp',
-      [T.SUB] = REF 'exp',
-      [T.MUL] = REF 'exp',
-      [T.DIV] = REF 'exp',
-      [T.POW] = REF 'exp',
-      [T.MOD] = REF 'exp',
-      [T.CONCAT] = REF 'exp',
-      [T.LT] = REF 'exp',
-      [T.LE] = REF 'exp',
-      [T.GT] = REF 'exp',
-      [T.GE] = REF 'exp',
-      [T.EQ] = REF 'exp',
-      [T.NE] = REF 'exp',
-      [T.AND] = REF 'exp',
-      [T.OR] = REF 'exp',
+  REF.exp {
+    [T.NIL] = REF.binop_exp {
+      [T.ADD] = REF.exp,
+      [T.SUB] = REF.exp,
+      [T.MUL] = REF.exp,
+      [T.DIV] = REF.exp,
+      [T.POW] = REF.exp,
+      [T.MOD] = REF.exp,
+      [T.CONCAT] = REF.exp,
+      [T.LT] = REF.exp,
+      [T.LE] = REF.exp,
+      [T.GT] = REF.exp,
+      [T.GE] = REF.exp,
+      [T.EQ] = REF.exp,
+      [T.NE] = REF.exp,
+      [T.AND] = REF.exp,
+      [T.OR] = REF.exp,
       ELSE = true,
     },
 
-    [T.FALSE] = REF 'binop_exp',
-    [T.TRUE] = REF 'binop_exp',
-    [T.NUMBER] = REF 'binop_exp',
-    [T.STRING] = REF 'binop_exp',
-    [T.VARARG] = REF 'binop_exp',
+    [T.FALSE] = REF.binop_exp,
+    [T.TRUE] = REF.binop_exp,
+    [T.NUMBER] = REF.binop_exp,
+    [T.STRING] = REF.binop_exp,
+    [T.VARARG] = REF.binop_exp,
 
     -- unop exp
-    [T.SUB] = REF 'exp',
-    [T.NOT] = REF 'exp',
-    [T.LEN] = REF 'exp',
+    [T.SUB] = REF.exp,
+    [T.NOT] = REF.exp,
+    [T.LEN] = REF.exp,
 
     -- tableconstructor
-    [T.LCURLY] = REF 'table_ctor' {
-      [T.RCURLY] = REF 'binop_exp',
+    [T.LCURLY] = REF.table_ctor {
+      [T.RCURLY] = REF.binop_exp,
 
       -- TODO: there could be also just exp here, if not followed by `=`.
       [T.IDENT] = {
         [T.ASSIGN] = {
-          PUSH = REF 'exp',
-          THEN = REF 'table_ctor_next' {
-            [T.COMMA] = REF 'table_ctor',
-            [T.SEMICOLON] = REF 'table_ctor',
-            [T.RCURLY] = REF 'binop_exp',
+          PUSH = REF.exp,
+          THEN = REF.table_ctor_next {
+            [T.COMMA] = REF.table_ctor,
+            [T.SEMICOLON] = REF.table_ctor,
+            [T.RCURLY] = REF.binop_exp,
             ELSE = 'expected `,`, `;` or `}`',
           },
         },
-        [T.COMMA] = REF 'table_ctor',
-        [T.SEMICOLON] = REF 'table_ctor',
-        [T.RCURLY] = REF 'binop_exp',
+        [T.COMMA] = REF.table_ctor,
+        [T.SEMICOLON] = REF.table_ctor,
+        [T.RCURLY] = REF.binop_exp,
         ELSE = 'expected `=`, `,`, `;`, `}`',
       },
 
       [T.LSQUARE] = {
-        PUSH = REF 'exp',
+        PUSH = REF.exp,
         THEN = {
           [T.RSQUARE] = {
             [T.ASSIGN] = {
-              PUSH = REF 'exp',
-              THEN = REF 'table_ctor_next',
+              PUSH = REF.exp,
+              THEN = REF.table_ctor_next,
             },
             ELSE = 'expected `=`',
           },
@@ -582,25 +585,25 @@ local function make_trie()
 
     [T.FUNCTION] = {
       [T.LPAREN] = {
-        [T.RPAREN] = REF 'func_body' {
+        [T.RPAREN] = REF.func_body {
           -- TODO: parse statements
-          [T.END] = REF 'binop_exp',
+          [T.END] = REF.binop_exp,
           ELSE = 'TODO: expected `end`',
         },
-        [T.IDENT] = REF 'func_parlist' {
+        [T.IDENT] = REF.func_parlist {
           [T.COMMA] = {
-            [T.IDENT] = REF 'func_parlist',
+            [T.IDENT] = REF.func_parlist,
             ELSE = 'expected identifier',
           },
           [T.VARARG] = {
-            [T.RPAREN] = REF 'func_body',
+            [T.RPAREN] = REF.func_body,
             ELSE = 'expected `)`',
           },
-          [T.RPAREN] = REF 'func_body',
+          [T.RPAREN] = REF.func_body,
           ELSE = 'expected `)` or `,`',
         },
         [T.VARARG] = {
-          [T.RPAREN] = REF 'func_body',
+          [T.RPAREN] = REF.func_body,
           ELSE = 'expected `)`',
         },
         ELSE = 'expected identifier or `)`',
@@ -608,25 +611,25 @@ local function make_trie()
       ELSE = 'expected `(`',
     },
 
-    [T.IDENT] = REF 'var' {
+    [T.IDENT] = REF.var {
       [T.DOT] = {
-        [T.IDENT] = REF 'var',
+        [T.IDENT] = REF.var,
         ELSE = 'expected identifier',
       },
       [T.LSQUARE] = {
-        PUSH = REF 'exp',
+        PUSH = REF.exp,
         THEN = {
-          [T.RSQUARE] = REF 'var',
+          [T.RSQUARE] = REF.var,
           ELSE = 'expected `]`',
         },
       },
-      ELSE = REF 'binop_exp',
+      ELSE = REF.binop_exp,
     },
 
     [T.LPAREN] = {
-      PUSH = REF 'exp',
+      PUSH = REF.exp,
       THEN = {
-        [T.RPAREN] = REF 'binop_exp',
+        [T.RPAREN] = REF.binop_exp,
         ELSE = 'expected `)`',
       },
     },
@@ -634,9 +637,9 @@ local function make_trie()
     ELSE = 'expected expression',
   }
 
-  TRIE = REF 'exp'
+  TRIE = REF.exp
   -- remove metatables
-  for _, v in pairs(refs) do
+  for _, v in pairs(REF) do
     setmetatable(v, nil)
   end
   return TRIE
