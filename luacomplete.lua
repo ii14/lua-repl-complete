@@ -527,9 +527,12 @@ function M.make_trie2()
     [T.STRING] = ref 'binop_exp',
     [T.VARARG] = ref 'binop_exp',
 
-    -- TODO: function
-    -- TODO: prefixexp
+    -- unop exp
+    [T.SUB] = ref 'exp',
+    [T.NOT] = ref 'exp',
+    [T.LEN] = ref 'exp',
 
+    -- tableconstructor
     [T.LCURLY] = ref 'table_ctor' {
       [T.RCURLY] = ref 'binop_exp',
       -- TODO: there could be also an exp here, if not followed by `=`.
@@ -561,11 +564,11 @@ function M.make_trie2()
           [ELSE] = 'expected `]`',
         },
       },
+      [ELSE] = 'expected field or expression',
     },
 
-    [T.SUB] = ref 'exp',
-    [T.NOT] = ref 'exp',
-    [T.LEN] = ref 'exp',
+    -- TODO: function
+    -- TODO: prefixexp
 
     [T.LPAREN] = {
       PUSH = ref 'exp',
