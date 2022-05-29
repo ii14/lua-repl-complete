@@ -7,20 +7,20 @@ local eq = assert.are.same
 
 
 describe('luacomplete.parse', function()
-  it('does something', function()
-    local function p(s)
-      local ts = parse(tokenize(s))
-      -- discard line/col information
-      if type(ts) == 'table' then
-        for _, t in ipairs(ts) do
-          if type(t) == 'table' then
-            t.col, t.idx, t.line = nil, nil, nil
-          end
+  local function p(s)
+    local ts = parse(tokenize(s))
+    -- discard line/col information
+    if type(ts) == 'table' then
+      for _, t in ipairs(ts) do
+        if type(t) == 'table' then
+          t.col, t.idx, t.line = nil, nil, nil
         end
       end
-      return ts
     end
+    return ts
+  end
 
+  it('parses basic expressions', function()
     eq({
       { type=T.STRING, value='"test"' },
       { type=T.EQ },
@@ -45,30 +45,9 @@ describe('luacomplete.parse', function()
     }, p('((nil) > (nil))'))
 
     eq('1:6: tried to pop from empty stack', p('(nil))'))
+  end)
 
-    eq({
-      { type=T.LCURLY },
-      { type=T.RCURLY },
-    }, p('{}'))
-
-    eq({
-      { type=T.LCURLY },
-      { type=T.LSQUARE },
-      { type=T.TRUE },
-      { type=T.RSQUARE },
-      { type=T.ASSIGN },
-      { type=T.TRUE },
-      { type=T.RCURLY },
-    }, p('{[true]=true}'))
-
-    eq({
-      { type=T.LCURLY },
-      { type=T.IDENT, value='key' },
-      { type=T.ASSIGN },
-      { type=T.STRING, value='"value"' },
-      { type=T.RCURLY },
-    }, p('{key="value"}'))
-
+  it('parses functions', function()
     eq({
       { type=T.FUNCTION },
       { type=T.LPAREN },
@@ -93,6 +72,46 @@ describe('luacomplete.parse', function()
       { type=T.RPAREN },
       { type=T.END },
     }, p('function(a, b) end'))
+  end)
+
+  it('parses tables', function()
+    eq({
+      { type=T.LCURLY },
+      { type=T.RCURLY },
+    }, p('{}'))
+
+    -- TODO: doesn't work yet
+    -- eq({
+    --   { type=T.LCURLY },
+    --   { type=T.NUMBER, value='1' },
+    --   { type=T.RCURLY },
+    -- }, p('{1}'))
+
+    -- eq({
+    --   { type=T.LCURLY },
+    --   { type=T.NUMBER, value='1' },
+    --   { type=T.COMMA },
+    --   { type=T.NUMBER, value='2' },
+    --   { type=T.RCURLY },
+    -- }, p('{1,2}'))
+
+    eq({
+      { type=T.LCURLY },
+      { type=T.LSQUARE },
+      { type=T.TRUE },
+      { type=T.RSQUARE },
+      { type=T.ASSIGN },
+      { type=T.TRUE },
+      { type=T.RCURLY },
+    }, p('{[true]=true}'))
+
+    eq({
+      { type=T.LCURLY },
+      { type=T.IDENT, value='key' },
+      { type=T.ASSIGN },
+      { type=T.STRING, value='"value"' },
+      { type=T.RCURLY },
+    }, p('{key="value"}'))
 
     eq({
       { type=T.LCURLY },
@@ -113,7 +132,9 @@ describe('luacomplete.parse', function()
       { type=T.RPAREN },
       { type=T.RCURLY },
     }, p('{[(function()end)]=(function()end)}'))
+  end)
 
+  it('parses vars', function()
     eq({
       { type=T.IDENT, value='foo' },
     }, p('foo'))
