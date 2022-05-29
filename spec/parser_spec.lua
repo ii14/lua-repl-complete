@@ -1,6 +1,6 @@
-local lexer = require('luacomplete.lexer')
-local tokenize = lexer.tokenize
-local T = lexer.TOKEN_TYPE
+local luacomplete = require('luacomplete')
+local tokenize = luacomplete.tokenize
+local T = luacomplete.TOKEN_TYPE
 
 local eq = assert.are.same
 
@@ -8,7 +8,7 @@ local eq = assert.are.same
 describe('luacomplete.parse2', function()
   it('does something', function()
     local function p(s)
-      local ts = lexer.parse2(tokenize(s))
+      local ts = luacomplete.parse2(tokenize(s))
       -- discard line/col information
       if type(ts) == 'table' then
         for _, t in ipairs(ts) do
@@ -25,6 +25,11 @@ describe('luacomplete.parse2', function()
       { type=T.EQ },
       { type=T.NIL },
     }, p('"test" == nil'))
+
+    eq({
+      { type=T.SUB },
+      { type=T.NUMBER, value='6' },
+    }, p('-6'))
 
     eq({
       { type=T.LPAREN },
@@ -46,7 +51,7 @@ end)
 describe('luacomplete.parse', function()
   it('does something', function()
     local function p(s)
-      local es = lexer.parse(tokenize(s))
+      local es = luacomplete.parse(tokenize(s))
       -- discard line/col information
       for _, ts in ipairs(es) do
         for _, t in ipairs(ts) do

@@ -178,7 +178,7 @@ local TOKEN_TYPE_LEN = {
 local WHITESPACE = ' \t\v\f\r'
 local RE_WHITESPACE = '['..WHITESPACE..']*([^'..WHITESPACE..'])'
 
-local lexer = {
+local M = {
   TOKEN_TYPE        = TOKEN_TYPE,
   TOKEN_TYPE_TO_LEN = TOKEN_TYPE_LEN,
 }
@@ -202,7 +202,7 @@ local lexer = {
 ---@return number line                0-indexed end line number
 ---@return number col                 0-indexed end column number
 ---@return luaCompleteToken? err      First unknown token
-function lexer.tokenize(input)
+function M.tokenize(input)
   assert(type(input) == 'string', 'expected string')
 
   local idx, line, col = 0, 0, 0
@@ -453,7 +453,7 @@ end
 --- Resolve operator and keyword types, in place
 ---@param tokens luaCompleteToken[]
 ---@return luaCompleteToken[] tokens
-function lexer.resolve_tokens(tokens)
+function M.resolve_tokens(tokens)
   for _, token in ipairs(tokens) do
     if token.type == TOKEN_TYPE.OP then
       token.type = assert(OP_TO_TOKEN_TYPE[token.value])
@@ -497,7 +497,7 @@ end
 
 
 
-function lexer.make_trie2()
+function M.make_trie2()
   local T = TOKEN_TYPE
   local ref = new_refs()
 
@@ -551,10 +551,10 @@ end
 
 --- Parse tokens
 ---@param ts luaCompleteToken[]
-function lexer.parse2(ts)
-  lexer.resolve_tokens(ts)
+function M.parse2(ts)
+  M.resolve_tokens(ts)
   local res = {}
-  local trie = lexer.make_trie2()
+  local trie = M.make_trie2()
   local stack = { trie }
 
   for _, t in ipairs(ts) do
@@ -591,86 +591,10 @@ end
 
 
 
-function lexer.make_trie()
+function M.make_trie()
   local T = TOKEN_TYPE
   local trie = {}
   local ref = new_refs()
-
-  ref 'var' {
-    [T.IDENT] = ref 'after_var2' {
-      [T.DOT] = {
-        [T.IDENT] = ref 'after_var2',
-        [ELSE] = 'expected identifier',
-      },
-      [T.LSQUARE] = {
-        [ref 'exp'] = {
-          [T.RSQUARE] = ref 'after_var2',
-          [ELSE] = 'expected `]`',
-        },
-      },
-      [ELSE] = true,
-    },
-  }
-
-  ref 'binop_exp' {
-    [T.ADD] = ref 'exp',
-    [T.SUB] = ref 'exp',
-    [T.MUL] = ref 'exp',
-    [T.DIV] = ref 'exp',
-    [T.POW] = ref 'exp',
-    [T.MOD] = ref 'exp',
-    [T.CONCAT] = ref 'exp',
-    [T.LT] = ref 'exp',
-    [T.LE] = ref 'exp',
-    [T.GT] = ref 'exp',
-    [T.GE] = ref 'exp',
-    [T.EQ] = ref 'exp',
-    [T.NE] = ref 'exp',
-    [T.AND] = ref 'exp',
-    [T.OR] = ref 'exp',
-    [ELSE] = true,
-  }
-
-  ref 'exp' {
-    [T.NIL] = ref 'binop_exp',
-    [T.FALSE] = ref 'binop_exp',
-    [T.TRUE] = ref 'binop_exp',
-    [T.NUMBER] = ref 'binop_exp',
-    [T.STRING] = ref 'binop_exp',
-    [T.VARARG] = ref 'binop_exp',
-
-    -- TODO: function
-    -- TODO: prefixexp
-    -- TODO: tableconstructor
-
-    [T.SUB] = ref 'exp',
-    [T.NOT] = ref 'exp',
-    [T.LEN] = ref 'exp',
-
-    [T.LPAREN] = {
-      [ref 'exp'] = {
-        [T.RPAREN] = ref 'binop_exp',
-        [ELSE] = 'expected `)`',
-      },
-    },
-
-    [ELSE] = 'expected expression',
-  }
-
-  ref 'inlinefunc' {
-    [T.FUNCTION] = {
-      [T.LPAREN] = ref 'inlinefunc_args' {
-        [T.RPAREN] = true,
-        [T.IDENT] = {
-          [T.COMMA] = ref 'inlinefunc_args',
-          [T.RPAREN] = true,
-        },
-        [T.VARARG] = {
-          [T.RPAREN] = true,
-        },
-      },
-    },
-  }
 
   trie[T.IDENT] = {
     name = 'var',
@@ -745,10 +669,10 @@ end
 
 --- Parse tokens
 ---@param ts luaCompleteToken[]
-function lexer.parse(ts)
-  lexer.resolve_tokens(ts)
+function M.parse(ts)
+  M.resolve_tokens(ts)
   local res = {}
-  local trie = lexer.make_trie()
+  local trie = M.make_trie()
   local pos = trie
 
   for _, t in ipairs(ts) do
@@ -771,23 +695,23 @@ end
 --- Utility function: Get token length.
 ---@param token luaCompleteToken
 ---@return number length
-function lexer.token_len(token)
+function M.token_len(token)
   return TOKEN_TYPE_LEN[token.type] or #token.value
 end
 
 --- Utility function: Check is token an operator. Expects resolved tokens.
 ---@param t number
 ---@return boolean
-function lexer.is_operator(t)
+function M.is_operator(t)
   return t > TOKEN_TYPE._OP_BEGIN and t < TOKEN_TYPE._OP_END
 end
 
 --- Utility function: Check is token a keyword. Expects resolved tokens.
 ---@param t number
 ---@return boolean
-function lexer.is_keyword(t)
+function M.is_keyword(t)
   return t > TOKEN_TYPE._KW_BEGIN and t < TOKEN_TYPE._KW_END
 end
 
 
-return lexer
+return M

@@ -1,5 +1,5 @@
-local lexer = require('luacomplete.lexer')
-local tokenize = lexer.tokenize
+local luacomplete = require('luacomplete')
+local tokenize = luacomplete.tokenize
 
 local function L(s)
   if type(s) == 'string' then
@@ -19,17 +19,17 @@ local function mk_token_gen(type)
   end
 end
 
-local C = mk_token_gen(lexer.TOKEN_TYPE.COMMENT)
-local I = mk_token_gen(lexer.TOKEN_TYPE.IDENT)
-local N = mk_token_gen(lexer.TOKEN_TYPE.NUMBER)
-local O = mk_token_gen(lexer.TOKEN_TYPE.OP)
-local S = mk_token_gen(lexer.TOKEN_TYPE.STRING)
-local U = mk_token_gen(lexer.TOKEN_TYPE.UNKNOWN)
+local C = mk_token_gen(luacomplete.TOKEN_TYPE.COMMENT)
+local I = mk_token_gen(luacomplete.TOKEN_TYPE.IDENT)
+local N = mk_token_gen(luacomplete.TOKEN_TYPE.NUMBER)
+local O = mk_token_gen(luacomplete.TOKEN_TYPE.OP)
+local S = mk_token_gen(luacomplete.TOKEN_TYPE.STRING)
+local U = mk_token_gen(luacomplete.TOKEN_TYPE.UNKNOWN)
 
 local eq = assert.are.same
 
 
-describe('luacomplete.lexer', function()
+describe('luacomplete.tokenize', function()
   describe('operator tokenizer', function()
     it('tokenizes operators', function()
       eq(L(':'), {O{ value=':' }})
