@@ -1,4 +1,6 @@
-local srep = string.rep
+local srep, tremove = string.rep, table.remove
+
+-- CONSTANTS -----------------------------------------------------------------------------
 
 --- Token types
 local TOKEN_TYPE = {
@@ -183,6 +185,9 @@ local M = {
   TOKEN_TYPE_TO_LEN = TOKEN_TYPE_LEN,
 }
 
+
+-- TOKENIZER -----------------------------------------------------------------------------
+
 ---@class luaCompleteToken
 ---@field type number           Token type
 ---@field value string          Raw value
@@ -194,7 +199,8 @@ local M = {
 
 --- Tokenize lua source code
 ---
---- TODO: add support \r and \r\n line endings
+--- TODO: add support `\r` and `\r\n` line endings
+--- TODO: tokenize `::` for goto labels
 ---
 ---@param input string                Input string
 ---@return luaCompleteToken[] tokens  List of tokens
@@ -450,7 +456,6 @@ function M.tokenize(input)
   return tokens, idx, line, col, err
 end
 
-
 --- Resolve operator and keyword types, in place
 ---@param tokens luaCompleteToken[]
 ---@return luaCompleteToken[] tokens
@@ -470,35 +475,38 @@ function M.resolve_tokens(tokens)
   return tokens
 end
 
-local ELSE = -1
+
+-- PARSER --------------------------------------------------------------------------------
+
+local ref_mt = {
+  __call = function(o, t)
+    for k, v in pairs(t) do
+      o[k] = v
+    end
+    return o
+  end,
+}
 
 local function new_refs()
   local refs = {}
-
-  local ref_mt = {
-    __call = function(o, t)
-      for k, v in pairs(t) do
-        o[k] = v
-      end
-      return o
-    end,
-  }
-
-  local function ref(name)
+  return function(name)
     local r = refs[name]
     if not r then
       r = setmetatable({}, ref_mt)
       refs[name] = r
     end
     return r
-  end
-
-  return ref, refs
+  end, refs
 end
 
+local TRIE
+local ELSE = -1
 
+local function make_trie()
+  if TRIE then
+    return TRIE
+  end
 
-function M.make_trie2()
   local T = TOKEN_TYPE
   local ref = new_refs()
 
@@ -605,15 +613,16 @@ function M.make_trie2()
     [ELSE] = 'expected expression',
   }
 
-  return ref 'exp'
+  TRIE = ref 'exp'
+  return TRIE
 end
 
 --- Parse tokens
 ---@param ts luaCompleteToken[]
-function M.parse2(ts)
+function M.parse(ts)
   M.resolve_tokens(ts)
   local res = {}
-  local trie = M.make_trie2()
+  local trie = make_trie()
   local stack = { trie }
 
   for _, t in ipairs(ts) do
@@ -626,7 +635,7 @@ function M.parse2(ts)
         -- TODO: unexpected token error
         return ('%d:%d: tried to pop from empty stack'):format(t.line + 1, t.col + 1)
       end
-      table.remove(stack)
+      tremove(stack)
       pos = stack[#stack]
       npos = assert(pos[t.type] or pos[ELSE], 'not handled')
     end
@@ -642,135 +651,35 @@ function M.parse2(ts)
       stack[#stack] = npos
     end
 
-    table.insert(res, t)
+    res[#res+1] = t
   end
 
   return res
 end
 
 
+-- UTILITY FUNCTIONS ---------------------------------------------------------------------
 
-function M.make_trie()
-  local T = TOKEN_TYPE
-  local trie = {}
-  local ref = new_refs()
-
-  trie[T.IDENT] = {
-    name = 'var',
-    lookup = ref 'after_var' {
-
-      [T.DOT] = {
-        name = 'prop',
-        lookup = {
-          [T.IDENT] = ref 'after_var',
-        },
-      },
-
-      [T.LSQUARE] = {
-        name = 'index',
-        lookup = {
-          -- TODO: generic exp
-          [T.NUMBER] = {
-            [T.RSQUARE] = ref 'after_var',
-          },
-          [T.STRING] = {
-            [T.RSQUARE] = ref 'after_var',
-          },
-          [T.TRUE] = {
-            [T.RSQUARE] = ref 'after_var',
-          },
-          [T.FALSE] = {
-            [T.RSQUARE] = ref 'after_var',
-          },
-        },
-      },
-
-      [T.COLON] = {
-        name = 'method',
-        lookup = {
-          [T.IDENT] = {
-            [T.LPAREN] = {
-              [T.RPAREN] = ref 'after_var',
-            },
-          },
-        },
-      },
-
-      [T.LPAREN] = {
-        name = 'call',
-        lookup = {
-          [T.RPAREN] = ref 'after_var',
-          -- TODO: generic exp list
-          [T.STRING] = {
-            [T.RPAREN] = ref 'after_var',
-          },
-        },
-      },
-
-      [T.STRING] = {
-        name = 'call',
-        lookup = ref 'after_var',
-      },
-
-      [T.LCURLY] = {
-        name = 'call',
-        lookup = {
-          [T.RCURLY] = ref 'after_var',
-          -- TODO: table ctor
-        },
-      },
-
-    },
-  }
-
-  return trie
-end
-
---- Parse tokens
----@param ts luaCompleteToken[]
-function M.parse(ts)
-  M.resolve_tokens(ts)
-  local res = {}
-  local trie = M.make_trie()
-  local pos = trie
-
-  for _, t in ipairs(ts) do
-    local npos = pos[t.type]
-    if npos then
-      if npos.name then
-        table.insert(res, { type=npos.name, t })
-        pos = npos.lookup
-      else
-        table.insert(res[#res], t)
-        pos = npos
-      end
-    end
-  end
-
-  return res
-end
-
-
---- Utility function: Get token length.
+--- Get token length.
 ---@param token luaCompleteToken
 ---@return number length
 function M.token_len(token)
   return TOKEN_TYPE_LEN[token.type] or #token.value
 end
 
---- Utility function: Check is token an operator. Expects resolved tokens.
+--- Check is token an operator. Expects resolved tokens.
 ---@param t number
 ---@return boolean
 function M.is_operator(t)
   return t > TOKEN_TYPE._OP_BEGIN and t < TOKEN_TYPE._OP_END
 end
 
---- Utility function: Check is token a keyword. Expects resolved tokens.
+--- Check is token a keyword. Expects resolved tokens.
 ---@param t number
 ---@return boolean
 function M.is_keyword(t)
   return t > TOKEN_TYPE._KW_BEGIN and t < TOKEN_TYPE._KW_END
 end
 
-
 return M
+-- vim: tw=90 sts=2 sw=2 noet
