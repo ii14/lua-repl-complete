@@ -508,67 +508,67 @@ local function make_trie()
   end
 
   local T = TOKEN_TYPE
-  local ref = new_refs()
+  local REF = new_refs()
 
-  ref 'exp' {
-    [T.NIL] = ref 'binop_exp' {
-      [T.ADD] = ref 'exp',
-      [T.SUB] = ref 'exp',
-      [T.MUL] = ref 'exp',
-      [T.DIV] = ref 'exp',
-      [T.POW] = ref 'exp',
-      [T.MOD] = ref 'exp',
-      [T.CONCAT] = ref 'exp',
-      [T.LT] = ref 'exp',
-      [T.LE] = ref 'exp',
-      [T.GT] = ref 'exp',
-      [T.GE] = ref 'exp',
-      [T.EQ] = ref 'exp',
-      [T.NE] = ref 'exp',
-      [T.AND] = ref 'exp',
-      [T.OR] = ref 'exp',
+  REF 'exp' {
+    [T.NIL] = REF 'binop_exp' {
+      [T.ADD] = REF 'exp',
+      [T.SUB] = REF 'exp',
+      [T.MUL] = REF 'exp',
+      [T.DIV] = REF 'exp',
+      [T.POW] = REF 'exp',
+      [T.MOD] = REF 'exp',
+      [T.CONCAT] = REF 'exp',
+      [T.LT] = REF 'exp',
+      [T.LE] = REF 'exp',
+      [T.GT] = REF 'exp',
+      [T.GE] = REF 'exp',
+      [T.EQ] = REF 'exp',
+      [T.NE] = REF 'exp',
+      [T.AND] = REF 'exp',
+      [T.OR] = REF 'exp',
       [ELSE] = true,
     },
 
-    [T.FALSE] = ref 'binop_exp',
-    [T.TRUE] = ref 'binop_exp',
-    [T.NUMBER] = ref 'binop_exp',
-    [T.STRING] = ref 'binop_exp',
-    [T.VARARG] = ref 'binop_exp',
+    [T.FALSE] = REF 'binop_exp',
+    [T.TRUE] = REF 'binop_exp',
+    [T.NUMBER] = REF 'binop_exp',
+    [T.STRING] = REF 'binop_exp',
+    [T.VARARG] = REF 'binop_exp',
 
     -- unop exp
-    [T.SUB] = ref 'exp',
-    [T.NOT] = ref 'exp',
-    [T.LEN] = ref 'exp',
+    [T.SUB] = REF 'exp',
+    [T.NOT] = REF 'exp',
+    [T.LEN] = REF 'exp',
 
     -- tableconstructor
-    [T.LCURLY] = ref 'table_ctor' {
-      [T.RCURLY] = ref 'binop_exp',
+    [T.LCURLY] = REF 'table_ctor' {
+      [T.RCURLY] = REF 'binop_exp',
 
       -- TODO: there could be also an exp here, if not followed by `=`.
       [T.IDENT] = {
         [T.ASSIGN] = {
-          PUSH = ref 'exp',
-          THEN = ref 'table_ctor_next' {
-            [T.COMMA] = ref 'table_ctor',
-            [T.SEMICOLON] = ref 'table_ctor',
-            [T.RCURLY] = ref 'binop_exp',
+          PUSH = REF 'exp',
+          THEN = REF 'table_ctor_next' {
+            [T.COMMA] = REF 'table_ctor',
+            [T.SEMICOLON] = REF 'table_ctor',
+            [T.RCURLY] = REF 'binop_exp',
             [ELSE] = 'expected `,`, `;` or `}`',
           },
         },
-        [T.COMMA] = ref 'table_ctor',
-        [T.SEMICOLON] = ref 'table_ctor',
-        [T.RCURLY] = ref 'binop_exp',
+        [T.COMMA] = REF 'table_ctor',
+        [T.SEMICOLON] = REF 'table_ctor',
+        [T.RCURLY] = REF 'binop_exp',
         [ELSE] = 'expected `=`, `,`, `;`, `}`',
       },
 
       [T.LSQUARE] = {
-        PUSH = ref 'exp',
+        PUSH = REF 'exp',
         THEN = {
           [T.RSQUARE] = {
             [T.ASSIGN] = {
-              PUSH = ref 'exp',
-              THEN = ref 'table_ctor_next',
+              PUSH = REF 'exp',
+              THEN = REF 'table_ctor_next',
             },
             [ELSE] = 'expected `=`',
           },
@@ -580,19 +580,19 @@ local function make_trie()
     },
 
     [T.FUNCTION] = {
-      [T.LPAREN] = ref 'func_parlist' {
-        [T.RPAREN] = ref 'func_body' {
+      [T.LPAREN] = REF 'func_parlist' {
+        [T.RPAREN] = REF 'func_body' {
           -- TODO: parse statements
-          [T.END] = ref 'binop_exp',
+          [T.END] = REF 'binop_exp',
           [ELSE] = 'TODO: expected `end`',
         },
         [T.IDENT] = {
-          [T.COMMA] = ref 'func_parlist',
-          [T.RPAREN] = ref 'func_body',
+          [T.COMMA] = REF 'func_parlist',
+          [T.RPAREN] = REF 'func_body',
           [ELSE] = 'expected `)` or `,`',
         },
         [T.VARARG] = {
-          [T.RPAREN] = ref 'func_body',
+          [T.RPAREN] = REF 'func_body',
           [ELSE] = 'expected `)`',
         },
         [ELSE] = 'expected identifier or `)`',
@@ -603,9 +603,9 @@ local function make_trie()
     -- TODO: prefixexp
 
     [T.LPAREN] = {
-      PUSH = ref 'exp',
+      PUSH = REF 'exp',
       THEN = {
-        [T.RPAREN] = ref 'binop_exp',
+        [T.RPAREN] = REF 'binop_exp',
         [ELSE] = 'expected `)`',
       },
     },
@@ -613,7 +613,7 @@ local function make_trie()
     [ELSE] = 'expected expression',
   }
 
-  TRIE = ref 'exp'
+  TRIE = REF 'exp'
   return TRIE
 end
 
