@@ -67,6 +67,31 @@ describe('luacomplete.parse2', function()
       { type=T.STRING, value='"value"' },
       { type=T.RCURLY },
     }, p('{key="value"}'))
+
+    eq({
+      { type=T.FUNCTION },
+      { type=T.LPAREN },
+      { type=T.RPAREN },
+      { type=T.END },
+    }, p('function() end'))
+
+    eq({
+      { type=T.FUNCTION },
+      { type=T.LPAREN },
+      { type=T.IDENT, value='a' },
+      { type=T.RPAREN },
+      { type=T.END },
+    }, p('function(a) end'))
+
+    eq({
+      { type=T.FUNCTION },
+      { type=T.LPAREN },
+      { type=T.IDENT, value='a' },
+      { type=T.COMMA },
+      { type=T.IDENT, value='b' },
+      { type=T.RPAREN },
+      { type=T.END },
+    }, p('function(a, b) end'))
   end)
 end)
 

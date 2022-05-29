@@ -567,7 +567,26 @@ function M.make_trie2()
       [ELSE] = 'expected field or expression',
     },
 
-    -- TODO: function
+    [T.FUNCTION] = {
+      [T.LPAREN] = ref 'func_parlist' {
+        [T.RPAREN] = ref 'func_body' {
+          [T.END] = ref 'binop_exp',
+          [ELSE] = 'TODO: expected `end`',
+        },
+        [T.IDENT] = {
+          [T.COMMA] = ref 'func_parlist',
+          [T.RPAREN] = ref 'func_body',
+          [ELSE] = 'expected `)` or `,`',
+        },
+        [T.VARARG] = {
+          [T.RPAREN] = ref 'func_body',
+          [ELSE] = 'expected `)`',
+        },
+        [ELSE] = 'expected identifier or `)`',
+      },
+      [ELSE] = 'expected `(`',
+    },
+
     -- TODO: prefixexp
 
     [T.LPAREN] = {
