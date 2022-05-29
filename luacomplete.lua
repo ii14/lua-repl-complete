@@ -589,13 +589,13 @@ local function make_trie()
         },
         [T.IDENT] = REF 'func_parlist' {
           [T.COMMA] = {
-						[T.IDENT] = REF 'func_parlist',
-						ELSE = 'expected identifier',
-					},
-					[T.VARARG] = {
-						[T.RPAREN] = REF 'func_body',
-						ELSE = 'expected `)`',
-					},
+            [T.IDENT] = REF 'func_parlist',
+            ELSE = 'expected identifier',
+          },
+          [T.VARARG] = {
+            [T.RPAREN] = REF 'func_body',
+            ELSE = 'expected `)`',
+          },
           [T.RPAREN] = REF 'func_body',
           ELSE = 'expected `)` or `,`',
         },
@@ -694,4 +694,4 @@ function M.is_keyword(t)
 end
 
 return M
--- vim: tw=90 sts=2 sw=2 noet
+-- vim: tw=90 sts=2 sw=2 et
