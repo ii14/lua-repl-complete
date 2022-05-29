@@ -650,18 +650,23 @@ function M.parse(ts)
   local trie = make_trie()
   local stack = { trie }
 
-  for _, t in ipairs(ts) do
+  local function next_pos(token)
     local pos = stack[#stack]
-    local npos = pos[t.type]
+    local npos = pos[token.type]
     if not npos then
       npos = pos.ELSE
       if type(npos) == 'table' then
-        npos = npos[t.type]
+        npos = npos[token.type]
       end
     end
     if not npos then
       error('not handled')
     end
+    return npos
+  end
+
+  for _, t in ipairs(ts) do
+    local npos = next_pos(t)
 
     while npos == true do
       -- `true` => expression parsed, pop from the stack
@@ -670,17 +675,7 @@ function M.parse(ts)
         return ('%d:%d: tried to pop from empty stack'):format(t.line + 1, t.col + 1)
       end
       tremove(stack)
-      pos = stack[#stack]
-      npos = pos[t.type]
-      if not npos then
-        npos = pos.ELSE
-        if type(npos) == 'table' then
-          npos = npos[t.type]
-        end
-      end
-      if not npos then
-        error('not handled')
-      end
+      npos = next_pos(t)
     end
 
     if type(npos) == 'string' then
