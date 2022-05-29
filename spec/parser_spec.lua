@@ -175,5 +175,21 @@ describe('luacomplete.parse', function()
       { type=T.NUMBER, value='1' },
       { type=T.RSQUARE },
     }, p('foo[1]'))
+
+    eq({
+      { type=T.IDENT, value='foo' },
+      { type=T.EQ },
+      { type=T.IDENT, value='foo' },
+    }, p('foo == foo'))
+
+    eq({
+      { type=T.IDENT, value='foo' },
+      { type=T.DOT },
+      { type=T.IDENT, value='bar' },
+      { type=T.EQ },
+      { type=T.IDENT, value='foo' },
+      { type=T.DOT },
+      { type=T.IDENT, value='bar' },
+    }, p('foo.bar == foo.bar'))
   end)
 end)

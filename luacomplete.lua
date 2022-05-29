@@ -652,7 +652,16 @@ function M.parse(ts)
 
   for _, t in ipairs(ts) do
     local pos = stack[#stack]
-    local npos = assert(pos[t.type] or pos.ELSE, 'not handled')
+    local npos = pos[t.type]
+    if not npos then
+      npos = pos.ELSE
+      if type(npos) == 'table' then
+        npos = npos[t.type]
+      end
+    end
+    if not npos then
+      error('not handled')
+    end
 
     while npos == true do
       -- `true` => expression parsed, pop from the stack
@@ -662,7 +671,16 @@ function M.parse(ts)
       end
       tremove(stack)
       pos = stack[#stack]
-      npos = assert(pos[t.type] or pos.ELSE, 'not handled')
+      npos = pos[t.type]
+      if not npos then
+        npos = pos.ELSE
+        if type(npos) == 'table' then
+          npos = npos[t.type]
+        end
+      end
+      if not npos then
+        error('not handled')
+      end
     end
 
     if type(npos) == 'string' then
